@@ -1,0 +1,9 @@
+// Fork.xcconfig
+// Base configuration for the VoiceInk app target (Debug and Release).
+// The signing identity is machine-specific: copy Fork.local.xcconfig.example
+// to Fork.local.xcconfig (gitignored) and set your own values.
+
+PRODUCT_BUNDLE_IDENTIFIER = com.example.VoiceInk
+DEVELOPMENT_TEAM =
+
+#include? "Fork.local.xcconfig"

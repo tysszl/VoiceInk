@@ -1,0 +1,6 @@
+// Copy to Fork.local.xcconfig (gitignored). Overrides Fork.xcconfig.
+// Keep the bundle ID stable across builds: macOS keys Accessibility,
+// microphone, and keychain permissions to it.
+
+PRODUCT_BUNDLE_IDENTIFIER = com.yourname.VoiceInk
+DEVELOPMENT_TEAM = ABCDE12345

@@ -103,3 +103,8 @@ Icon
 Network Trash Folder
 Temporary Items
 .apdisk
+
+# Fork: machine-local configuration and notes
+Fork.local.xcconfig
+scripts/local.env
+LOCAL.md
