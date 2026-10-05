@@ -316,7 +316,9 @@ final class RecordingShortcutModeHandler {
     private var lastShortcutPressTime: Date?
     private var pendingDoubleTapReleaseTimes: [ShortcutAction: TimeInterval] = [:]
 
-    private let shortcutPressCooldown: TimeInterval = 0.5
+    // Fork tuning: 0.25 (upstream 0.5) — lets fast stop→restart and quick
+    // re-taps through while still blocking accidental double-fires.
+    private let shortcutPressCooldown: TimeInterval = 0.25
     private let hybridPressThreshold: TimeInterval = 0.5
     private let doubleTapThreshold: TimeInterval = 0.7
 

@@ -22,7 +22,8 @@ class CursorPaster {
         let autoLearnGeneration: UInt64?
     }
 
-    private static let prePasteDelay: TimeInterval = 0.10
+    // Fork tuning: 0.05 (upstream 0.10) — snappier paste; clipboard still settles.
+    private static let prePasteDelay: TimeInterval = 0.05
     private static let pasteShortcutEventDelay: TimeInterval = 0.01
     private static let minimumClipboardRestoreDelay: TimeInterval = 0.25
 
