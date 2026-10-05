@@ -18,6 +18,12 @@
   </a>
 </div>
 
+> [!NOTE]
+> **This is a personal fork** of [VoiceInk](https://github.com/Beingpax/VoiceInk) by Prakash Joshi Pax, built from source for my own use.
+> It changes build settings, a few timing values, pasting into Screen Sharing, and update checks; [docs/fork-changes.md](docs/fork-changes.md) lists every change.
+> No prebuilt binaries are distributed here.
+> To support the author and get the official app with updates, buy a license at [tryvoiceink.com](https://tryvoiceink.com).
+
 ---
 
 VoiceInk is a native macOS application that transcribes what you say to text almost instantly. You can find all the information and download the app from [here](https://tryvoiceink.com). 
