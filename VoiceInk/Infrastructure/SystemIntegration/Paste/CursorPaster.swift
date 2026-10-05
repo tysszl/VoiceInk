@@ -24,6 +24,10 @@ class CursorPaster {
 
     // Fork tuning: 0.05 (upstream 0.10) — snappier paste; clipboard still settles.
     private static let prePasteDelay: TimeInterval = 0.05
+    // Fork tuning: remote-desktop paste path (see docs/fork-changes.md).
+    private static let remoteDesktopBundleIDs: Set<String> = ["com.apple.ScreenSharing"]
+    private static let remotePrePasteDelay: TimeInterval = 0.8
+    // Kept at 0.01 deliberately as a safety buffer between the four ⌘V key events.
     private static let pasteShortcutEventDelay: TimeInterval = 0.01
     private static let minimumClipboardRestoreDelay: TimeInterval = 0.25
 
@@ -50,6 +54,8 @@ class CursorPaster {
         let shouldRestoreClipboard = UserDefaults.standard.bool(forKey: "restoreClipboardAfterPaste")
         let savedContents = shouldRestoreClipboard ? snapshotClipboard(from: pasteboard) : []
         let sessionID = UUID().uuidString
+        let remoteFrontmost = NSWorkspace.shared.frontmostApplication?.bundleIdentifier
+            .map { remoteDesktopBundleIDs.contains($0) } ?? false
 
         guard
             ClipboardManager.setClipboard(
@@ -62,20 +68,24 @@ class CursorPaster {
             return PasteOutcome(result: .commandNotPosted, autoLearnGeneration: nil)
         }
 
-        await wait(prePasteDelay)
+        if remoteFrontmost, await remoteClipboardPush(text) {
+            await wait(0.2)  // remote pasteboard settle
+        } else {
+            await wait(remoteFrontmost ? remotePrePasteDelay : prePasteDelay)
+        }
 
         let pasteResult: PasteResult
         let autoLearnGeneration: UInt64?
         if AutoLearnSettings.isEnabled {
             let targetProcessID = NSWorkspace.shared.frontmostApplication?.processIdentifier
-            pasteResult = await postPasteCommand()
+            pasteResult = await postPasteCommand(remote: remoteFrontmost)
             autoLearnGeneration = await AutoLearnService.shared.pasteDidFinish(
                 text: text,
                 processID: targetProcessID,
                 commandPosted: pasteResult.didPostPasteCommand
             )
         } else {
-            pasteResult = await postPasteCommand()
+            pasteResult = await postPasteCommand(remote: remoteFrontmost)
             autoLearnGeneration = nil
         }
         if shouldRestoreClipboard {
@@ -101,9 +111,40 @@ class CursorPaster {
         }
     }
 
+    // Fork tuning: Apple's shared-clipboard sync is lazy and loses the race
+    // against the remote ⌘V. When a push command is configured (UserDefaults
+    // "remoteClipboardPushCommand", e.g. "ssh mini pbcopy"), set the remote
+    // Mac's clipboard deterministically before pasting; fall back to the
+    // timed wait when unset or failing.
+    private static func remoteClipboardPush(_ text: String) async -> Bool {
+        guard let command = UserDefaults.standard.string(forKey: "remoteClipboardPushCommand"),
+              !command.isEmpty else { return false }
+        return await Task.detached {
+            let process = Process()
+            process.executableURL = URL(fileURLWithPath: "/bin/sh")
+            process.arguments = ["-c", command]
+            let stdin = Pipe()
+            process.standardInput = stdin
+            process.standardOutput = FileHandle.nullDevice
+            process.standardError = FileHandle.nullDevice
+            do {
+                try process.run()
+                stdin.fileHandleForWriting.write(Data(text.utf8))
+                stdin.fileHandleForWriting.closeFile()
+                process.waitUntilExit()
+                return process.terminationStatus == 0
+            } catch {
+                return false
+            }
+        }.value
+    }
+
     @MainActor
-    private static func postPasteCommand() async -> PasteResult {
-        if PasteMethod.current() == .appleScript {
+    private static func postPasteCommand(remote: Bool = false) async -> PasteResult {
+        // Fork tuning: over Screen Sharing, only System Events keystrokes keep
+        // their ⌘ modifier when forwarded (CGEvent ⌘V arrives as bare "v",
+        // unicode typing arrives as keycode garbage) — force AppleScript remotely.
+        if remote || PasteMethod.current() == .appleScript {
             return pasteUsingAppleScript() ? .commandPosted : .commandNotPosted
         } else {
             return await pasteFromClipboard()
