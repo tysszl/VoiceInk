@@ -21,6 +21,7 @@
 > [!NOTE]
 > **This is a personal fork** of [VoiceInk](https://github.com/Beingpax/VoiceInk) by Prakash Joshi Pax, built from source for my own use.
 > It changes build settings, a few timing values, pasting into Screen Sharing, and update checks; [docs/fork-changes.md](docs/fork-changes.md) lists every change.
+> My recommended models, providers, and cleanup prompt are in [docs/recommended-setup.md](docs/recommended-setup.md).
 > No prebuilt binaries are distributed here.
 > To support the author and get the official app with updates, buy a license at [tryvoiceink.com](https://tryvoiceink.com).
 
