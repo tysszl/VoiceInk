@@ -32,7 +32,16 @@ final class UpdaterViewModel: NSObject, ObservableObject, SPUUpdaterDelegate {
     override init() {
         let defaults = UserDefaults.standard
         self.defaults = defaults
+
+        #if LOCAL_BUILD
+        // Fork builds update by pulling and rebuilding; never probe upstream's
+        // appcast automatically because it offers the official paid app.
+        checksForUpdatesWhenDashboardAppears = false
+        defaults.set(false, forKey: DefaultsKey.automaticUpdateChecks)
+        #else
         checksForUpdatesWhenDashboardAppears = Self.initialAutomaticCheckPreference(in: defaults)
+        #endif
+
         super.init()
 
         let updater = updaterController.updater
@@ -49,6 +58,12 @@ final class UpdaterViewModel: NSObject, ObservableObject, SPUUpdaterDelegate {
     }
 
     func setChecksForUpdatesWhenDashboardAppears(_ value: Bool) {
+        #if LOCAL_BUILD
+        checksForUpdatesWhenDashboardAppears = false
+        availableUpdate = nil
+        defaults.set(false, forKey: DefaultsKey.automaticUpdateChecks)
+        return
+        #else
         guard checksForUpdatesWhenDashboardAppears != value else { return }
 
         checksForUpdatesWhenDashboardAppears = value
@@ -59,6 +74,7 @@ final class UpdaterViewModel: NSObject, ObservableObject, SPUUpdaterDelegate {
         } else {
             availableUpdate = nil
         }
+        #endif
     }
 
     func checkForUpdatesIfDue() {
