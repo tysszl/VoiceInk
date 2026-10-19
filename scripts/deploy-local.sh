@@ -40,11 +40,16 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 INSTALLED="/Applications/VoiceInk.app"
 
 # Xcode's default DerivedData folder for this checkout (the one Cmd+R uses).
+# Paths compare case-insensitively: the macOS file system does, and the
+# checkout can be reached as both VoiceInk and voiceink.
+lowercase() { printf '%s' "$1" | tr '[:upper:]' '[:lower:]'; }
+
 find_debug_app() {
-    local dir
+    local dir project
+    project="$(lowercase "$REPO_ROOT/VoiceInk.xcodeproj")"
     for dir in "$HOME/Library/Developer/Xcode/DerivedData"/VoiceInk-*; do
         [ -f "$dir/info.plist" ] || continue
-        if [ "$(/usr/libexec/PlistBuddy -c 'Print :WorkspacePath' "$dir/info.plist" 2>/dev/null)" = "$REPO_ROOT/VoiceInk.xcodeproj" ]; then
+        if [ "$(lowercase "$(/usr/libexec/PlistBuddy -c 'Print :WorkspacePath' "$dir/info.plist" 2>/dev/null)")" = "$project" ]; then
             echo "$dir/Build/Products/Debug/VoiceInk.app"
             return
         fi
