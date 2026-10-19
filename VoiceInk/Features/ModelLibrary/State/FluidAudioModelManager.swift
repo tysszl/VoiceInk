@@ -33,7 +33,15 @@ class FluidAudioModelManager: ObservableObject {
         "parakeet-tdt-0.6b-v2": .v2,
         "parakeet-tdt-0.6b-v3": .v3,
         "parakeet-ultra": .ultra,
+        // Fork tuning: Fluid Speech Mini has Redux's file layout, and VoiceInk does not offer Redux,
+        // so Mini takes the .redux slot to get its own model folder and loaded-model cache.
+        fluidSpeechMiniModelName: .redux,
     ]
+
+    // Fork tuning: Fluid Speech Mini (FluidVoice Labs) is a Parakeet V3 drop-in that FluidAudio has no Repo for.
+    nonisolated static let fluidSpeechMiniModelName = "fluid-speech-mini"
+    nonisolated private static let fluidSpeechMiniRepository = "FluidVoice-Labs/fluid-speech-mini-coreml"
+    nonisolated private static let fluidSpeechMiniRevision = "d81c3160dfe5a5e1f8f7267164a07d30617a3a1a"
 
     private enum FluidAudioModelKind {
         case parakeet(AsrModelVersion)
@@ -277,18 +285,23 @@ class FluidAudioModelManager: ObservableObject {
                 await manager.cleanup()
                 try Task.checkCancellation()
             case .parakeet(let version):
-                guard let repo = Self.parakeetRepo(for: version) else {
-                    throw AsrModelsError.loadingFailed("Unsupported Parakeet model version.")
-                }
                 let cacheDirectory = AsrModels.defaultCacheDirectory(for: version)
                 preserveModelFiles = AsrModels.modelsExist(at: cacheDirectory, version: version)
-                try await ModelHub.download(
-                    repo,
-                    to: cacheDirectory.deletingLastPathComponent(),
-                    variant: version == .v3 ? ParakeetEncoderPrecision.int8.rawValue : nil,
-                    additionalModelNames: [ModelNames.ASR.vocabularyFile],
-                    progressHandler: Self.downloadOnlyProgressHandler(forwarding: progressHandler)
-                )
+                // Fork tuning: Fluid Speech Mini downloads from its own repository.
+                if modelName == Self.fluidSpeechMiniModelName {
+                    try await Self.downloadFluidSpeechMini(to: cacheDirectory, progressHandler: progressHandler)
+                } else {
+                    guard let repo = Self.parakeetRepo(for: version) else {
+                        throw AsrModelsError.loadingFailed("Unsupported Parakeet model version.")
+                    }
+                    try await ModelHub.download(
+                        repo,
+                        to: cacheDirectory.deletingLastPathComponent(),
+                        variant: version == .v3 ? ParakeetEncoderPrecision.int8.rawValue : nil,
+                        additionalModelNames: [ModelNames.ASR.vocabularyFile],
+                        progressHandler: Self.downloadOnlyProgressHandler(forwarding: progressHandler)
+                    )
+                }
                 preserveModelFiles = true
                 try Task.checkCancellation()
                 try await ModelHub.download(
@@ -356,6 +369,44 @@ class FluidAudioModelManager: ObservableObject {
         default:
             return nil
         }
+    }
+
+    // Fork tuning: fetches Fluid Speech Mini's files and saves its joint under the name
+    // FluidAudio's V3-family loader expects. Each file is moved into place only when complete.
+    nonisolated private static func downloadFluidSpeechMini(
+        to directory: URL,
+        progressHandler: ProgressHandler?
+    ) async throws {
+        let modelFiles = ["analytics/coremldata.bin", "coremldata.bin", "metadata.json", "model.mil", "weights/weight.bin"]
+        let files = ["Preprocessor", "Encoder", "Decoder", "JointDecision"].flatMap { model in
+            modelFiles.map { "\(model).mlmodelc/\($0)" }
+        } + [ModelNames.ASR.vocabularyFile]
+
+        for (index, file) in files.enumerated() {
+            try Task.checkCancellation()
+            progressHandler?(
+                DownloadProgress(
+                    fractionCompleted: Double(index) / Double(files.count),
+                    phase: .downloading(completedFiles: index, totalFiles: files.count)
+                ))
+            let localPath = file.replacingOccurrences(of: "JointDecision.mlmodelc", with: ModelNames.ASR.jointV3File)
+            let destination = directory.appendingPathComponent(localPath)
+            guard !FileManager.default.fileExists(atPath: destination.path) else { continue }
+
+            let url = URL(string: "https://huggingface.co/\(fluidSpeechMiniRepository)/resolve/\(fluidSpeechMiniRevision)/\(file)")!
+            let (temporaryURL, response) = try await URLSession.shared.download(from: url)
+            guard (response as? HTTPURLResponse)?.statusCode == 200 else {
+                throw AsrModelsError.downloadFailed("Could not download \(file) for Fluid Speech Mini.")
+            }
+            try FileManager.default.createDirectory(
+                at: destination.deletingLastPathComponent(), withIntermediateDirectories: true)
+            try FileManager.default.moveItem(at: temporaryURL, to: destination)
+        }
+        progressHandler?(
+            DownloadProgress(
+                fractionCompleted: 1.0,
+                phase: .downloading(completedFiles: files.count, totalFiles: files.count)
+            ))
     }
 
     // MARK: - Delete

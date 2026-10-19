@@ -67,6 +67,18 @@ enum TranscriptionModelRegistry {
                 supportsStreaming: true,
                 supportedLanguages: LanguageDictionary.forProvider(isMultilingual: true, provider: .fluidAudio)
             ),
+            // Fork tuning: FluidVoice's English dictation model, trained from Parakeet V3 and Ultra.
+            FluidAudioModel(
+                name: FluidAudioModelManager.fluidSpeechMiniModelName,
+                displayName: "Fluid Speech Mini",
+                description: "FluidVoice's English dictation model, trained from Parakeet V3 and Ultra to ignore background voices",
+                size: "253 MB",
+                speed: 0.99,
+                accuracy: 0.95,
+                ramUsage: 0.3,
+                supportsStreaming: true,
+                supportedLanguages: LanguageDictionary.forProvider(isMultilingual: false, provider: .fluidAudio)
+            ),
             FluidAudioModel(
                 name: "parakeet-unified-0.6b",
                 displayName: "Parakeet Unified",
