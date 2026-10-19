@@ -4,10 +4,11 @@ The setup I use every day. Set it up in the app's Modes; each Mode has its own t
 
 | Mode | When | Transcription | Cleanup |
 |---|---|---|---|
-| Offline (default) | everywhere else | Parakeet Ultra (local), English | none |
-| Enhancement | chat apps and sites: Slack, WhatsApp, Telegram, Signal, Messages, and their web versions | Parakeet Ultra (local), English | Cerebras, `qwen-3.8-27b`, the Default TS prompt below |
+| Offline (default) | everywhere else | Fluid Speech Mini (local), English | none |
+| Enhancement | chat apps and sites: Slack, WhatsApp, Telegram, Signal, Messages, and their web versions | Fluid Speech Mini (local), English | Cerebras, `qwen-3.8-27b`, the Default TS prompt below |
 
-- Use Parakeet Ultra alone for anything that doesn't need custom terms or perfect formatting. It runs on-device and is the fastest path.
+- Use Fluid Speech Mini alone for anything that doesn't need custom terms or perfect formatting. It runs on-device and is the fastest path.
+- Fluid Speech Mini matches Parakeet Ultra's accuracy, handles other voices in the room better, and uses less than half the memory while dictating (about 260 MB against 610 MB), so it suits Macs with less memory. It is English only; for other languages, use Parakeet Ultra. Upstream VoiceInk does not offer it yet; this fork adds it.
 - Add Qwen 3.8 27B through Cerebras when you need custom terms and clean formatting. Cerebras serves it fast enough that cleanup adds little delay. It needs a Cerebras API key, added in the AI Models section.
 - Keep the enhancement timeout short (3 seconds) so a slow response falls back to the raw transcript.
 - Add your names and jargon to the Dictionary; the cleanup model uses them.

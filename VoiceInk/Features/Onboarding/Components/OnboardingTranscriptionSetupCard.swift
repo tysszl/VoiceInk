@@ -136,7 +136,8 @@ struct OnboardingTranscriptionSetupCard: View {
                 .font(.system(size: 14, weight: .semibold))
                 .foregroundColor(AppTheme.Status.error)
 
-            Text("Parakeet V3 is not available.")
+            // Fork tuning: names Fluid Speech Mini, the onboarding model.
+            Text("Fluid Speech Mini is not available.")
                 .font(.system(size: 12, weight: .medium))
                 .foregroundColor(AppTheme.Text.secondary)
 

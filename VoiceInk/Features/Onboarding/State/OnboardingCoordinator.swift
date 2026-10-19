@@ -369,7 +369,8 @@ final class OnboardingCoordinator: ObservableObject {
     var requiredTranscriptionModel: FluidAudioModel? {
         TranscriptionModelRegistry.models
             .compactMap { $0 as? FluidAudioModel }
-            .first { $0.name == "parakeet-tdt-0.6b-v3" }
+            // Fork tuning: onboarding sets up Fluid Speech Mini instead of Parakeet V3.
+            .first { $0.name == FluidAudioModelManager.fluidSpeechMiniModelName }
     }
 
     func selectedOnboardingTranscriptionProviderKeyBinding() -> Binding<String> {

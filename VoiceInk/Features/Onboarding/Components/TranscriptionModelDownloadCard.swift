@@ -31,7 +31,8 @@ struct TranscriptionModelDownloadCard: View {
                         .font(.system(size: 17, weight: .semibold))
                         .foregroundColor(AppTheme.Text.primary)
 
-                    Text("Fast multilingual transcription that runs locally on Mac.")
+                    // Fork tuning: describes Fluid Speech Mini, the onboarding model.
+                    Text("Fast English transcription that runs locally on Mac.")
                         .font(.system(size: 12))
                         .foregroundColor(AppTheme.Text.secondary)
                         .lineLimit(1)

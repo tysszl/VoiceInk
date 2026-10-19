@@ -26,6 +26,7 @@ Last synced: upstream v2.22 (tag @ 302cc74).
 | `VoiceInk/Infrastructure/SystemIntegration/Paste/CursorPaster.swift` | `prePasteDelay` 0.10 → 0.05 | paste lands about 50 ms sooner |
 | `VoiceInk/Infrastructure/SystemIntegration/Paste/CursorPaster.swift` | remote-desktop paste: when Screen Sharing is frontmost, run the `remoteClipboardPushCommand` preference (if set) to put the text on the remote Mac's clipboard, otherwise wait 0.8 s; then paste through AppleScript | only System Events keystrokes keep ⌘ when forwarded, and Apple's shared clipboard sync is slow and can replay stale contents |
 | `VoiceInk/Features/ModelLibrary/Models/TranscriptionModelRegistry.swift`, `VoiceInk/Features/ModelLibrary/State/FluidAudioModelManager.swift` | adds Fluid Speech Mini (`fluid-speech-mini`), downloaded from `FluidVoice-Labs/fluid-speech-mini-coreml` at a pinned revision, with `JointDecision.mlmodelc` saved as `JointDecisionv3.mlmodelc`; it takes FluidAudio's `.redux` version slot, which VoiceInk does not offer, so it gets its own folder (`FluidAudio/Models/parakeet-redux`) and model cache | a Parakeet V3 drop-in that matches Ultra's accuracy at a fifth of the size and holds up better with other voices in the room; FluidAudio has no repo entry for it. Drop this when FluidAudio or upstream adds it, or if Ultra stays the better choice |
+| `VoiceInk/Features/Onboarding/State/OnboardingCoordinator.swift`, `.../Components/TranscriptionModelDownloadCard.swift`, `.../Components/OnboardingTranscriptionSetupCard.swift` | onboarding downloads Fluid Speech Mini instead of Parakeet V3, and its text names Mini and says English | Mini is the recommended model and runs well on Macs with less memory |
 | `VoiceInk/App/Updates/UpdaterViewModel.swift` | under `#if LOCAL_BUILD`, automatic update checks stay off; manual checks still work | fork builds update by rebuilding, and upstream's feed offers the paid app |
 
 Fork edits are marked `// Fork tuning:` or gated by `#if LOCAL_BUILD`. Add no fork-only Swift files.
@@ -58,7 +59,7 @@ Verify:
 
 ```bash
 rg -n "baseConfigurationReference|CODE_SIGN_ENTITLEMENTS|DEVELOPMENT_TEAM|ENABLE_APP_SANDBOX|PRODUCT_BUNDLE_IDENTIFIER|PRODUCT_NAME|CFBundleDisplayName|SWIFT_ACTIVE_COMPILATION_CONDITIONS" VoiceInk.xcodeproj/project.pbxproj
-git diff <merged upstream ref> --stat -- '*.swift'   # expect: UpdaterViewModel, RecordingShortcutManager, CursorPaster, FluidAudioModelManager, TranscriptionModelRegistry
+git diff <merged upstream ref> --stat -- '*.swift'   # expect: UpdaterViewModel, RecordingShortcutManager, CursorPaster, FluidAudioModelManager, TranscriptionModelRegistry, OnboardingCoordinator, TranscriptionModelDownloadCard, OnboardingTranscriptionSetupCard
 git diff --check
 ./scripts/deploy-local.sh --build --open
 ```
