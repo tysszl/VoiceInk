@@ -5,7 +5,7 @@ The setup I use every day. Set it up in the app's Modes; each Mode has its own t
 | Mode | When | Transcription | Cleanup |
 |---|---|---|---|
 | Offline (default) | everywhere else | Fluid Speech Mini (local), English | none |
-| Enhancement | chat apps and sites: Slack, WhatsApp, Telegram, Signal, Messages, and their web versions | Fluid Speech Mini (local), English | Cerebras, `qwen-3.8-27b`, the System only prompt below |
+| Cleanup | chat apps and sites: Slack, WhatsApp, Telegram, Signal, Messages, and their web versions | Fluid Speech Mini (local), English | Cerebras, `qwen-3.8-27b`, the System only prompt below |
 
 - Use Fluid Speech Mini alone for anything that doesn't need custom terms or perfect formatting. It runs on-device and is the fastest path.
 - Fluid Speech Mini matches Parakeet Ultra's accuracy, handles other voices in the room better, and uses less than half the memory while dictating (about 260 MB against 610 MB), so it suits Macs with less memory. It is English only; for other languages, use Parakeet Ultra. Upstream VoiceInk does not offer it yet; this fork adds it.
