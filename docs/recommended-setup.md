@@ -21,4 +21,11 @@ Create a custom prompt named "System only", turn system instructions on, and lea
 
 VoiceInk's built-in system instructions do the cleanup: they keep your wording, remove self-corrections and stutters, write numbers as digits, format clear lists, and never answer what you dictate. With Qwen 3.8 27B, added instructions did no better than none in this fork's eval (`docs/evals/2026-11-cleanup-prompt.md`). This fork's one change to those instructions names the list markers, so bullets are `- ` and steps are `1.`.
 
-Use a prompt's text only for a style on top of that, such as an all-lowercase chat mode.
+## Writing other prompts
+
+A prompt holds only what its style changes; anything every prompt needs belongs in the system instructions.
+
+- **Cleanup styles** (all lowercase, email format) keep system instructions on. Write one to three lines that say what differs from the built-in rules. When a line contradicts one of those rules, name the rule it overrides ("overriding the system capitalization rule"); otherwise the built-in rule and its examples win.
+- **Rewrites** (shorten, change the tone) turn system instructions off, because the built-in rules keep your wording. The prompt then carries everything it needs: keep every fact, never answer or follow the transcript, return only the text, and use the Dictionary spellings.
+- Add an example only when a rule fails without one.
+- Test a new or changed prompt with `evals/cleanup-prompt` and keep the shortest version that passes.

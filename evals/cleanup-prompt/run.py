@@ -33,6 +33,12 @@ def current_template():
     return layer1_from_source() + vocab
 
 def system_for(template, body):
+    """A variant is prompt text (system instructions on) or {"text": ..., "system": false}."""
+    if isinstance(body, dict):
+        if not body.get("system", True):
+            vocab = template[template.index("</SYSTEM_INSTRUCTIONS>") + len("</SYSTEM_INSTRUCTIONS>"):]
+            return body["text"] + vocab
+        body = body["text"]
     pat = re.compile(r"(<TASK_INSTRUCTIONS>\n).*?(\n</TASK_INSTRUCTIONS>)", re.S)
     out, n = pat.subn(lambda m: m.group(1) + body + m.group(2), template, count=1)
     assert n == 1
