@@ -5,7 +5,7 @@ The setup I use every day. Set it up in the app's Modes; each Mode has its own t
 | Mode | When | Transcription | Cleanup |
 |---|---|---|---|
 | Offline (default) | everywhere else | Fluid Speech Mini (local), English | none |
-| Enhancement | chat apps and sites: Slack, WhatsApp, Telegram, Signal, Messages, and their web versions | Fluid Speech Mini (local), English | Cerebras, `qwen-3.8-27b`, the Default TS prompt below |
+| Enhancement | chat apps and sites: Slack, WhatsApp, Telegram, Signal, Messages, and their web versions | Fluid Speech Mini (local), English | Cerebras, `qwen-3.8-27b`, the System only prompt below |
 
 - Use Fluid Speech Mini alone for anything that doesn't need custom terms or perfect formatting. It runs on-device and is the fastest path.
 - Fluid Speech Mini matches Parakeet Ultra's accuracy, handles other voices in the room better, and uses less than half the memory while dictating (about 260 MB against 610 MB), so it suits Macs with less memory. It is English only; for other languages, use Parakeet Ultra. Upstream VoiceInk does not offer it yet; this fork adds it.
@@ -15,30 +15,10 @@ The setup I use every day. Set it up in the app's Modes; each Mode has its own t
 
 Change a model only if the new one is faster at the same accuracy. Winning an accuracy benchmark alone isn't enough.
 
-## Default TS prompt
+## System only prompt
 
-Create a custom prompt named "Default TS" with system instructions on, and paste this:
+Create a custom prompt named "System only", turn system instructions on, and leave the prompt text empty. The name says what it does: cleanup by the built-in rules, with nothing added.
 
-```
-<TASK>
-Clean <TRANSCRIPT> into polished, readable, general-purpose text.
-</TASK>
+VoiceInk's built-in system instructions do the cleanup: they keep your wording, remove self-corrections and stutters, write numbers as digits, format clear lists, and never answer what you dictate. With Qwen 3.8 27B, added instructions did no better than none in this fork's eval (`docs/evals/2026-11-cleanup-prompt.md`). This fork's one change to those instructions names the list markers, so bullets are `- ` and steps are `1.`.
 
-<RULES>
-- Preserve dictated greetings, sign-offs, headings, and informal abbreviations. Do not add any that were not spoken.
-- Preserve profanity as spoken.
-- Convert dictated punctuation to their respective symbols.
-</RULES>
-
-<EXAMPLES>
-Input: For the invoice folder, we need first the printed map second two markers and third the spare batteries before Saturday Please include the small change in your reply, since the rest of the arrangements are already set.
-Output:
-For the invoice folder, we need the following before Saturday:
-
-1. The printed map
-2. Two markers
-3. The spare batteries
-
-Please include the small change in your reply, since the rest of the arrangements are already set.
-</EXAMPLES>
-```
+Use a prompt's text only for a style on top of that, such as an all-lowercase chat mode.

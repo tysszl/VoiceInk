@@ -108,3 +108,4 @@ Temporary Items
 Fork.local.xcconfig
 scripts/local.env
 LOCAL.md
+__pycache__/
