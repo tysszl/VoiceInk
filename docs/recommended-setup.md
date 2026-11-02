@@ -4,7 +4,7 @@ The setup I use every day. Set it up in the app's Modes; each Mode has its own t
 
 | Mode | When | Transcription | Cleanup |
 |---|---|---|---|
-| Offline (default) | everywhere else | Fluid Speech Mini (local), English | none |
+| Raw (default) | everywhere else | Fluid Speech Mini (local), English | none |
 | Cleanup | chat apps and sites: Slack, WhatsApp, Telegram, Signal, Messages, and their web versions | Fluid Speech Mini (local), English | Cerebras, `qwen-3.8-27b`, the System only prompt below |
 
 - Use Fluid Speech Mini alone for anything that doesn't need custom terms or perfect formatting. It runs on-device and is the fastest path.
