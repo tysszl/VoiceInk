@@ -1,6 +1,6 @@
 # VoiceInk fork
 
-Fork of [Beingpax/VoiceInk](https://github.com/Beingpax/VoiceInk) (GPL v3), a macOS dictation app, built for daily use with `LOCAL_BUILD`. Based on upstream v2.22 @ 302cc74.
+Fork of [Beingpax/VoiceInk](https://github.com/Beingpax/VoiceInk) (GPL v3), a macOS dictation app, built for daily use with `LOCAL_BUILD`. Based on upstream v2.25 @ 228f4217.
 
 If `LOCAL.md` exists, read it: it holds this machine's dictation setup, signing values, and credential notes, and is gitignored.
 

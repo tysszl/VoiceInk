@@ -62,9 +62,7 @@ find_debug_app() {
 # signing identity gives a stable designated requirement, so "Always Allow"
 # survives rebuilds. Falls back to ad-hoc when no identity is installed.
 # Mirrors upstream's `make local`: pass the identity's SHA-1 hash and require
-# signing. The identity goes through a wrapper xcconfig because on Xcode 26 the
-# CODE_SIGN_IDENTITY=- line in LocalBuild.xcconfig beats a command-line override
-# (verified with -showBuildSettings) and the app silently ends up ad-hoc signed.
+# signing.
 SIGN_IDENTITY="${LOCAL_CODESIGN_IDENTITY:-}"
 if [ -z "$SIGN_IDENTITY" ]; then
     SIGN_IDENTITY=$(security find-identity -v -p codesigning 2>/dev/null | awk '/"Apple Development: / { print $2; exit }')
@@ -78,10 +76,6 @@ else
     echo "No Apple Development identity found; using ad-hoc signing (keychain prompts will recur after rebuilds)"
 fi
 
-SIGN_XCCONFIG="$(mktemp -t voiceink-sign).xcconfig"
-trap 'rm -f "$SIGN_XCCONFIG"' EXIT
-printf '#include "%s/LocalBuild.xcconfig"\nCODE_SIGN_IDENTITY = %s\n' "$REPO_ROOT" "$SIGN_IDENTITY" > "$SIGN_XCCONFIG"
-
 if [ "$BUILD_FIRST" -eq 1 ]; then
     echo "Building Debug VoiceInk.app..."
     xcodebuild -quiet \
@@ -90,7 +84,8 @@ if [ "$BUILD_FIRST" -eq 1 ]; then
         -project "$REPO_ROOT/VoiceInk.xcodeproj" \
         -scheme VoiceInk \
         -configuration Debug \
-        -xcconfig "$SIGN_XCCONFIG" \
+        -xcconfig "$REPO_ROOT/LocalBuild.xcconfig" \
+        CODE_SIGN_IDENTITY="$SIGN_IDENTITY" \
         CODE_SIGNING_REQUIRED="$SIGN_REQUIRED" \
         CODE_SIGNING_ALLOWED=YES \
         DEVELOPMENT_TEAM="" \

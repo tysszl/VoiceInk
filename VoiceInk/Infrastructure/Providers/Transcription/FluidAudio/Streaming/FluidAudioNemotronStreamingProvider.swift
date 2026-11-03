@@ -28,11 +28,7 @@ final class FluidAudioNemotronStreamingProvider: StreamingTranscriptionProvider 
         await manager.setPartialCallback { partial in
             continuation?.yield(.partial(text: partial))
         }
-        try await TranscriptionDiagnostics.measure(
-            "nemotron-streaming-model-load", logger: logger, details: "model=\(model.name) configuration=SDK-default"
-        ) {
-            try await manager.loadModels(from: cacheDirectory)
-        }
+        try await manager.loadModels(from: cacheDirectory)
         let compatibleLanguage = TranscriptionLanguageSupport.validLanguageOrFallback(
             language,
             for: model
@@ -53,11 +49,7 @@ final class FluidAudioNemotronStreamingProvider: StreamingTranscriptionProvider 
         let samples = PCMAudioConverter.float32Samples(fromPCM16Data: data)
         guard !samples.isEmpty else { return }
 
-        _ = try await TranscriptionDiagnostics.measure(
-            "nemotron-streaming-prediction", logger: logger, details: "samples=\(samples.count)"
-        ) {
-            try await manager.process(samples: samples)
-        }
+        _ = try await manager.process(samples: samples)
     }
 
     func commit() async throws {
@@ -65,17 +57,13 @@ final class FluidAudioNemotronStreamingProvider: StreamingTranscriptionProvider 
             throw StreamingTranscriptionError.notConnected
         }
 
-        let finalText = try await TranscriptionDiagnostics.measure("nemotron-streaming-finish", logger: logger) {
-            try await manager.finish()
-        }
+        let finalText = try await manager.finish()
         let text = finalText.trimmingCharacters(in: .whitespacesAndNewlines)
         eventsContinuation?.yield(.committed(text: text))
     }
 
     func disconnect() async {
-        _ = try? await TranscriptionDiagnostics.measure("nemotron-streaming-cleanup", logger: logger) {
-            await manager?.cleanup()
-        }
+        await manager?.cleanup()
         manager = nil
         eventsContinuation?.finish()
         logger.notice("Nemotron streaming disconnected")

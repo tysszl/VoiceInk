@@ -2,7 +2,7 @@
 
 This fork tracks [Beingpax/VoiceInk](https://github.com/Beingpax/VoiceInk) and keeps a small diff. This file lists every intentional change and how to carry it through an upstream merge. `git diff <last merged upstream ref> main` must agree with it; update it in the same commit as any fork change.
 
-Last synced: upstream v2.22 (tag @ 302cc74).
+Last synced: upstream v2.25 (`228f4217`, "Release version 2.25").
 
 ## Build settings
 
@@ -22,17 +22,14 @@ Last synced: upstream v2.22 (tag @ 302cc74).
 
 | File | Change | Why |
 |---|---|---|
-| `VoiceInk/Features/Shortcuts/Coordination/RecordingShortcutManager.swift` | `shortcutPressCooldown` 0.5 → 0.25 | lets fast stop-and-restart and quick re-taps through while still blocking accidental double presses |
-| `VoiceInk/Infrastructure/SystemIntegration/Paste/CursorPaster.swift` | `prePasteDelay` 0.10 → 0.05 | paste lands about 50 ms sooner |
-| `VoiceInk/Infrastructure/SystemIntegration/Paste/CursorPaster.swift` | remote-desktop paste: when Screen Sharing is frontmost, run the `remoteClipboardPushCommand` preference (if set) to put the text on the remote Mac's clipboard, otherwise wait 0.8 s; then paste through AppleScript | only System Events keystrokes keep ⌘ when forwarded, and Apple's shared clipboard sync is slow and can replay stale contents |
+| `VoiceInk/Infrastructure/SystemIntegration/Paste/CursorPaster.swift` | `prePasteDelay` 0.20 → 0.05 | paste lands about 150 ms sooner |
+| `VoiceInk/Infrastructure/SystemIntegration/Paste/CursorPaster.swift` | when Screen Sharing is frontmost, use upstream's Remote Desktop Typing instead of the selected paste method | a clipboard paste in Screen Sharing pastes the remote Mac's clipboard; upstream only offers remote typing as a global setting |
 | `VoiceInk/Features/ModelLibrary/Models/TranscriptionModelRegistry.swift`, `VoiceInk/Features/ModelLibrary/State/FluidAudioModelManager.swift` | adds Fluid Speech Mini (`fluid-speech-mini`), downloaded from `FluidVoice-Labs/fluid-speech-mini-coreml` at a pinned revision, with `JointDecision.mlmodelc` saved as `JointDecisionv3.mlmodelc`; it takes FluidAudio's `.redux` version slot, which VoiceInk does not offer, so it gets its own folder (`FluidAudio/Models/parakeet-redux`) and model cache | a Parakeet V3 drop-in that matches Ultra's accuracy at a fifth of the size and holds up better with other voices in the room; FluidAudio has no repo entry for it. Drop this when FluidAudio or upstream adds it, or if Ultra stays the better choice |
 | `VoiceInk/Features/Onboarding/State/OnboardingCoordinator.swift`, `.../Components/TranscriptionModelDownloadCard.swift`, `.../Components/OnboardingTranscriptionSetupCard.swift` | onboarding downloads Fluid Speech Mini instead of Parakeet V3, and its text names Mini and says English | Mini is the recommended model and runs well on Macs with less memory |
 | `VoiceInk/Core/Enhancement/AIPrompts.swift` | the list rule in the cleanup system instructions names its markers: `("1.")` for ordered steps, `("- ")` for unordered items | without them the model sometimes bullets with `*` and three spaces, which pastes poorly into chat apps; naming only `- ` in a prompt turned numbered steps into bullets. Measured in `evals/cleanup-prompt` |
 | `VoiceInk/App/Updates/UpdaterViewModel.swift` | under `#if LOCAL_BUILD`, automatic update checks stay off; manual checks still work | fork builds update by rebuilding, and upstream's feed offers the paid app |
 
 Fork edits are marked `// Fork tuning:` or gated by `#if LOCAL_BUILD`. Add no fork-only Swift files.
-
-Remote paste setup: `defaults write <bundle ID> remoteClipboardPushCommand "ssh -o BatchMode=yes -o ConnectTimeout=2 user@host pbcopy"`, and turn off Edit → Use Shared Clipboard in the Screen Sharing viewer. If the preference seems ignored, remove any stale `~/Library/Containers/<bundle ID>`: `defaults` writes there while the unsandboxed app reads `~/Library/Preferences/<bundle ID>.plist`.
 
 ## Fork-only files
 
@@ -48,10 +45,12 @@ Remote paste setup: `defaults write <bundle ID> remoteClipboardPushCommand "ssh 
 ```bash
 git fetch upstream --tags
 git log --oneline main..upstream/main
-git merge upstream/main        # or the release tag, e.g. v2.23
+git merge <release commit>     # the "Release version X" commit on upstream/main
 ```
 
-Expect conflicts in `project.pbxproj` in the app target's Debug and Release build settings.
+Merge the "Release version X" commit, not the tag: upstream tags the commit before it (v2.25) or a commit off `main` (v2.22, whose diagnostics commits `main` never got). Merging from an off-`main` base conflicts in files the fork never touched; make those match upstream and delete files only the old base added.
+
+Expect conflicts in `project.pbxproj` in the app target's Debug and Release build settings. When they tangle, start from upstream's file and re-apply the fork's Debug and Release blocks and the `Fork.xcconfig` reference.
 
 - Keep ours: the base configuration reference to `Fork.xcconfig`; no `PRODUCT_BUNDLE_IDENTIFIER` or `DEVELOPMENT_TEAM` lines in the app target; `LOCAL_BUILD`; `VoiceInk.local.entitlements`; `ENABLE_APP_SANDBOX = NO`; in Debug, `PRODUCT_NAME = "$(TARGET_NAME)"` and `INFOPLIST_KEY_CFBundleDisplayName = VoiceInk` (the display-name line merges without a conflict, so check it).
 - Take theirs: `MARKETING_VERSION`, `CURRENT_PROJECT_VERSION`, everything else.
@@ -61,7 +60,7 @@ Verify:
 
 ```bash
 rg -n "baseConfigurationReference|CODE_SIGN_ENTITLEMENTS|DEVELOPMENT_TEAM|ENABLE_APP_SANDBOX|PRODUCT_BUNDLE_IDENTIFIER|PRODUCT_NAME|CFBundleDisplayName|SWIFT_ACTIVE_COMPILATION_CONDITIONS" VoiceInk.xcodeproj/project.pbxproj
-git diff <merged upstream ref> --stat -- '*.swift'   # expect: AIPrompts, UpdaterViewModel, RecordingShortcutManager, CursorPaster, FluidAudioModelManager, TranscriptionModelRegistry, OnboardingCoordinator, TranscriptionModelDownloadCard, OnboardingTranscriptionSetupCard
+git diff <merged upstream ref> --stat -- '*.swift'   # expect: AIPrompts, UpdaterViewModel, CursorPaster, FluidAudioModelManager, TranscriptionModelRegistry, OnboardingCoordinator, TranscriptionModelDownloadCard, OnboardingTranscriptionSetupCard
 git diff --check
 ./scripts/deploy-local.sh --build --open
 ```

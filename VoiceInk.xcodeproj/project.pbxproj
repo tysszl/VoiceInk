@@ -16,10 +16,9 @@
 		E1C0A0022FA8000000000001 /* TranscribeCpp in Frameworks */ = {isa = PBXBuildFile; productRef = E1C0A0012FA8000000000001 /* TranscribeCpp */; };
 		E1D7EF992E35E16C00640029 /* MediaRemoteAdapter in Frameworks */ = {isa = PBXBuildFile; productRef = E1D7EF982E35E16C00640029 /* MediaRemoteAdapter */; };
 		E1D7EF9A2E35E19B00640029 /* MediaRemoteAdapter in Embed Frameworks */ = {isa = PBXBuildFile; productRef = E1D7EF982E35E16C00640029 /* MediaRemoteAdapter */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
-		E1DD1EE12FA1D7D30020AF3B /* Zip in Frameworks */ = {isa = PBXBuildFile; productRef = E1DD1EE02FA1D7D30020AF3B /* Zip */; };
+		E1DD1EE12FA1D7D30020AF3B /* ZIPFoundation in Frameworks */ = {isa = PBXBuildFile; productRef = E1DD1EE02FA1D7D30020AF3B /* ZIPFoundation */; };
 		E1F350112F1D10D600790A2C /* whisper.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = E1A0BD052EB1E7B800266859 /* whisper.xcframework */; };
 		E1F350122F1D10D600790A2C /* whisper.xcframework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = E1A0BD052EB1E7B800266859 /* whisper.xcframework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
-		E1F511012FA3B47000F00001 /* SelectedTextKit in Frameworks */ = {isa = PBXBuildFile; productRef = E1F511032FA3B47000F00001 /* SelectedTextKit */; };
 		E1FA00062FA7000000000001 /* VoiceInkRefineXPCProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1FA00052FA7000000000001 /* VoiceInkRefineXPCProtocol.swift */; };
 		E1FA00072FA7000000000001 /* VoiceInkRefineXPCProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1FA00052FA7000000000001 /* VoiceInkRefineXPCProtocol.swift */; };
 		E1FA00082FA7000000000001 /* VoiceInkRefineXPC.xpc in Embed XPC Services */ = {isa = PBXBuildFile; fileRef = E1FA00012FA7000000000001 /* VoiceInkRefineXPC.xpc */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
@@ -151,10 +150,9 @@
 				E1ADD45F2CC544F100303ECB /* Sparkle in Frameworks */,
 				E1C0A0022FA8000000000001 /* TranscribeCpp in Frameworks */,
 				E1AF669B3031B7AA006D50FA /* FluidAudio in Frameworks */,
-				E1DD1EE12FA1D7D30020AF3B /* Zip in Frameworks */,
+				E1DD1EE12FA1D7D30020AF3B /* ZIPFoundation in Frameworks */,
 				E1701E75305E77220098872B /* LLMkit in Frameworks */,
 				E13461ED2FD1CCCD005B6A81 /* MarkdownUI in Frameworks */,
-				E1F511012FA3B47000F00001 /* SelectedTextKit in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -251,7 +249,6 @@
 				E11473AE2CBE0F0A00318EE4 /* Resources */,
 				E1A8C8CD2E1257B7003E58EC /* Embed Frameworks */,
 				E1FA000C2FA7000000000001 /* Embed XPC Services */,
-				6BA6D42615284A54B843F6C5 /* FluidAudio Revision */,
 			);
 			buildRules = (
 			);
@@ -266,9 +263,8 @@
 				E1ADD45E2CC544F100303ECB /* Sparkle */,
 				E1D7EF982E35E16C00640029 /* MediaRemoteAdapter */,
 				E1342C1E2EB4844800CED8A2 /* Atomics */,
-				E1DD1EE02FA1D7D30020AF3B /* Zip */,
+				E1DD1EE02FA1D7D30020AF3B /* ZIPFoundation */,
 				E1C0A0012FA8000000000001 /* TranscribeCpp */,
-				E1F511032FA3B47000F00001 /* SelectedTextKit */,
 				E13461EC2FD1CCCD005B6A81 /* MarkdownUI */,
 				E1AF669A3031B7AA006D50FA /* FluidAudio */,
 				E1701E74305E77220098872B /* LLMkit */,
@@ -384,6 +380,7 @@
 				Base,
 				de,
 				fr,
+				ja,
 				"zh-Hans",
 			);
 			mainGroup = E11473A72CBE0F0A00318EE4;
@@ -391,9 +388,8 @@
 			packageReferences = (
 				E1ADD45D2CC544F100303ECB /* XCRemoteSwiftPackageReference "Sparkle" */,
 				E1D7EF972E35E16C00640029 /* XCRemoteSwiftPackageReference "mediaremote-adapter" */,
-				E1ECEC142E44590200DFFBA8 /* XCRemoteSwiftPackageReference "Zip" */,
+				E1ECEC142E44590200DFFBA8 /* XCRemoteSwiftPackageReference "ZIPFoundation" */,
 				E1342C1D2EB4844800CED8A2 /* XCRemoteSwiftPackageReference "swift-atomics" */,
-				E1F511022FA3B47000F00001 /* XCRemoteSwiftPackageReference "SelectedTextKit" */,
 				E13461EB2FD1CCCD005B6A81 /* XCRemoteSwiftPackageReference "swift-markdown-ui" */,
 				E1F900012FA6000000000001 /* XCRemoteSwiftPackageReference "mlx-swift-lm" */,
 				E1F900022FA6000000000001 /* XCRemoteSwiftPackageReference "swift-huggingface" */,
@@ -445,25 +441,6 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
-
-/* Begin PBXShellScriptBuildPhase section */
-		6BA6D42615284A54B843F6C5 /* FluidAudio Revision */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = ();
-			inputPaths = (
-				"$(BUILD_DIR)/../../SourcePackages/workspace-state.json",
-				"$(SRCROOT)/scripts/write-fluid-audio-revision.py",
-			);
-			name = "FluidAudio Revision";
-			outputPaths = (
-				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/FluidAudioRevision.txt",
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "/usr/bin/python3 \"$SCRIPT_INPUT_FILE_1\"\n";
-		};
-/* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		E11473AC2CBE0F0A00318EE4 /* Sources */ = {
@@ -655,7 +632,7 @@
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 222;
+				CURRENT_PROJECT_VERSION = 225;
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_ASSET_PATHS = "\"VoiceInk/Preview Content\"";
 				ENABLE_APP_SANDBOX = NO;
@@ -671,7 +648,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 15.0;
-				MARKETING_VERSION = 2.22;
+				MARKETING_VERSION = 2.25;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG ENABLE_NATIVE_SPEECH_ANALYZER LOCAL_BUILD $(inherited)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -690,7 +667,7 @@
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 222;
+				CURRENT_PROJECT_VERSION = 225;
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_ASSET_PATHS = "\"VoiceInk/Preview Content\"";
 				ENABLE_APP_SANDBOX = NO;
@@ -706,7 +683,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 15.0;
-				MARKETING_VERSION = 2.22;
+				MARKETING_VERSION = 2.25;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "ENABLE_NATIVE_SPEECH_ANALYZER LOCAL_BUILD $(inherited)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -911,7 +888,7 @@
 			repositoryURL = "https://github.com/Beingpax/LLMkit.git";
 			requirement = {
 				kind = revision;
-				revision = 37100b22033674f183af0b6e18f81db071ea6320;
+				revision = a7541e056968af1b201dfe152c5e24ecefdb09d8;
 			};
 		};
 		E1ADD45D2CC544F100303ECB /* XCRemoteSwiftPackageReference "Sparkle" */ = {
@@ -946,20 +923,12 @@
 				kind = branch;
 			};
 		};
-		E1ECEC142E44590200DFFBA8 /* XCRemoteSwiftPackageReference "Zip" */ = {
+		E1ECEC142E44590200DFFBA8 /* XCRemoteSwiftPackageReference "ZIPFoundation" */ = {
 			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/marmelroy/Zip";
+			repositoryURL = "https://github.com/weichsel/ZIPFoundation.git";
 			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 2.1.2;
-			};
-		};
-		E1F511022FA3B47000F00001 /* XCRemoteSwiftPackageReference "SelectedTextKit" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/Beingpax/SelectedTextKit.git";
-			requirement = {
-				branch = "performance/off-main-menu-action";
-				kind = branch;
+				kind = exactVersion;
+				version = 0.9.20;
 			};
 		};
 		E1F900012FA6000000000001 /* XCRemoteSwiftPackageReference "mlx-swift-lm" */ = {
@@ -1026,15 +995,10 @@
 			package = E1D7EF972E35E16C00640029 /* XCRemoteSwiftPackageReference "mediaremote-adapter" */;
 			productName = MediaRemoteAdapter;
 		};
-		E1DD1EE02FA1D7D30020AF3B /* Zip */ = {
+		E1DD1EE02FA1D7D30020AF3B /* ZIPFoundation */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = E1ECEC142E44590200DFFBA8 /* XCRemoteSwiftPackageReference "Zip" */;
-			productName = Zip;
-		};
-		E1F511032FA3B47000F00001 /* SelectedTextKit */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = E1F511022FA3B47000F00001 /* XCRemoteSwiftPackageReference "SelectedTextKit" */;
-			productName = SelectedTextKit;
+			package = E1ECEC142E44590200DFFBA8 /* XCRemoteSwiftPackageReference "ZIPFoundation" */;
+			productName = ZIPFoundation;
 		};
 		E1F900102FA6000000000001 /* MLXLLM */ = {
 			isa = XCSwiftPackageProductDependency;

@@ -1,5 +1,4 @@
 import Foundation
-import SwiftData
 import os
 
 /// Sendable source that bridges audio chunks from any thread into an AsyncStream.
@@ -123,20 +122,17 @@ class StreamingTranscriptionService {
     private let chunkSource = AudioChunkSource()
     private var state: StreamingState = .idle
     private var committedSegments: [String] = []
-    private let modelContext: ModelContext
     private let fluidAudioService: FluidAudioTranscriptionService?
     private var onPartialTranscript: ((String) -> Void)?
     private let metrics = StreamingMetrics()
     private var stopStartedAt: Date?
     private var firstPartialLogged = false
     private var firstCommitLogged = false
-    private var diagnostics: TranscriptionDiagnostics.Recording?
 
     init(
-        modelContext: ModelContext, fluidAudioService: FluidAudioTranscriptionService? = nil,
+        fluidAudioService: FluidAudioTranscriptionService? = nil,
         onPartialTranscript: ((String) -> Void)? = nil
     ) {
-        self.modelContext = modelContext
         self.fluidAudioService = fluidAudioService
         self.onPartialTranscript = onPartialTranscript
     }
@@ -157,7 +153,7 @@ class StreamingTranscriptionService {
 
     /// Start a streaming transcription session for the given model.
     func startStreaming(model: any TranscriptionModel, context: TranscriptionRequestContext) async throws {
-        diagnostics = TranscriptionDiagnostics.recording
+        try Task.checkCancellation()
         let start = Date()
         state = .connecting
         committedSegments = []
@@ -165,7 +161,7 @@ class StreamingTranscriptionService {
         firstPartialLogged = false
         firstCommitLogged = false
 
-        let provider = createProvider(for: model)
+        let provider = createProvider(for: model, vocabulary: context.vocabulary ?? RecordingVocabulary())
         self.provider = provider
 
         let selectedLanguage = context.language ?? "auto"
@@ -201,17 +197,15 @@ class StreamingTranscriptionService {
 
     /// Stops streaming and follows the provider's requested finalization path.
     func stopAndFinalize() async throws -> StreamingStopResult {
-        if fluidAudioService != nil {
-            return try await TranscriptionDiagnostics.measure("streaming-stop", logger: logger) {
-                try await stopStreaming()
-            }
-        }
-        return try await stopStreaming()
-    }
-
-    private func stopStreaming() async throws -> StreamingStopResult {
         guard let provider = provider, state == .streaming else {
             throw StreamingTranscriptionError.notConnected
+        }
+
+        if provider is FluidAudioUnifiedStreamingProvider, metrics.snapshot().droppedChunks > 0 {
+            logger.warning("Unified streaming dropped audio; using the full recording for batch transcription")
+            state = .done
+            await cleanupStreaming()
+            return .requiresBatchFallback
         }
 
         if provider.stopDisposition == .useBatchFallback {
@@ -249,7 +243,7 @@ class StreamingTranscriptionService {
         } catch {
             commitSignal?.finish()
             commitSignal = nil
-            logger.error("Failed to send commit: \(TranscriptionDiagnostics.errorDetails(error, includeUnderlying: false), privacy: .public)")
+            logger.error("Failed to send commit: \(error, privacy: .public)")
             state = .failed
             await cleanupStreaming()
             throw error
@@ -297,12 +291,9 @@ class StreamingTranscriptionService {
 
         let providerToDisconnect = provider
         provider = nil
-        let diagnostics = diagnostics
 
         Task {
-            await TranscriptionDiagnostics.$recording.withValue(diagnostics) {
-                await providerToDisconnect?.disconnect()
-            }
+            await providerToDisconnect?.disconnect()
         }
 
         committedSegments = []
@@ -311,14 +302,19 @@ class StreamingTranscriptionService {
 
     // MARK: - Private
 
-    private func createProvider(for model: any TranscriptionModel) -> StreamingTranscriptionProvider {
+    private func createProvider(
+        for model: any TranscriptionModel, vocabulary: RecordingVocabulary
+    ) -> StreamingTranscriptionProvider {
         if model.provider == .fluidAudio {
             if FluidAudioModelManager.isNemotronModel(named: model.name) {
                 return FluidAudioNemotronStreamingProvider()
             }
 
             if FluidAudioModelManager.isParakeetUnifiedModel(named: model.name) {
-                return FluidAudioUnifiedStreamingProvider()
+                guard let fluidAudioService else {
+                    fatalError("FluidAudioTranscriptionService required for Unified streaming")
+                }
+                return FluidAudioUnifiedStreamingProvider(fluidAudioService: fluidAudioService)
             }
 
             guard let fluidAudioService else {
@@ -329,7 +325,7 @@ class StreamingTranscriptionService {
             return FluidAudioStreamingProvider(fluidAudioService: fluidAudioService)
         }
         guard let cloudProvider = CloudProviderRegistry.provider(for: model.provider),
-            let streamingProvider = cloudProvider.makeStreamingProvider(modelContext: modelContext)
+            let streamingProvider = cloudProvider.makeStreamingProvider(vocabulary: vocabulary)
         else {
             fatalError(
                 "Unsupported streaming provider: \(model.provider). Check shouldUseRealtimeTranscription() before calling startStreaming()."
@@ -344,18 +340,15 @@ class StreamingTranscriptionService {
         let provider = provider
         let metrics = metrics
         let logger = logger
-        let diagnostics = diagnostics
 
         sendTask = Task.detached {
             for await chunk in source.stream {
                 do {
-                    try await TranscriptionDiagnostics.$recording.withValue(diagnostics) {
-                        try await provider?.sendAudioChunk(chunk)
-                    }
+                    try await provider?.sendAudioChunk(chunk)
                     metrics.recordSent(chunk.count)
                 } catch {
-                    let desc = TranscriptionDiagnostics.errorDetails(error, includeUnderlying: false)
-                    logger.error("Failed to send audio chunk id=\(diagnostics?.id ?? "-", privacy: .public): \(desc, privacy: .public)")
+                    let desc = error.localizedDescription
+                    logger.error("Failed to send audio chunk: \(desc, privacy: .public)")
                 }
             }
         }
@@ -428,7 +421,7 @@ class StreamingTranscriptionService {
                     break
                 case .error(let error):
                     await MainActor.run {
-                        self.logger.error("Streaming event error: \(TranscriptionDiagnostics.errorDetails(error, includeUnderlying: false), privacy: .public)")
+                        self.logger.error("Streaming event error: \(error, privacy: .public)")
                     }
                 }
             }

@@ -3,8 +3,16 @@ import Foundation
 import os.log
 
 class FluidAudioTranscriptionService: TranscriptionService {
+    @MainActor private(set) lazy var unifiedStreamingModels = UnifiedModelCache {
+        StreamingUnifiedAsrManager(
+            config: FluidAudioModelManager.parakeetUnifiedStreamingConfig,
+            encoderPrecision: FluidAudioModelManager.parakeetUnifiedPrecision
+        )
+    }
+    @MainActor private lazy var unifiedBatchModels = UnifiedModelCache {
+        UnifiedAsrManager(encoderPrecision: FluidAudioModelManager.parakeetUnifiedPrecision)
+    }
     private var asrManager: AsrManager?
-    private var unifiedAsrManager: UnifiedAsrManager?
     private var nemotronAsrManager: StreamingNemotronMultilingualAsrManager?
     private var vadManager: VadManager?
     private var activeVersion: AsrModelVersion?
@@ -13,6 +21,15 @@ class FluidAudioTranscriptionService: TranscriptionService {
     private var loadingTask: (version: AsrModelVersion, task: Task<AsrModels, Error>)?
     private let audioConverter = AudioConverter()
     private let logger = Logger(subsystem: "com.prakashjoshipax.voiceink", category: "FluidAudioTranscriptionService")
+
+    @MainActor
+    func prewarmUnifiedModel(isRealtime: Bool) async throws {
+        if isRealtime {
+            _ = try await unifiedStreamingModels.getOrLoad()
+        } else {
+            _ = try await unifiedBatchModels.getOrLoad()
+        }
+    }
 
     private func version(for model: any TranscriptionModel) -> AsrModelVersion {
         FluidAudioModelManager.asrVersion(for: model.name)
@@ -25,14 +42,11 @@ class FluidAudioTranscriptionService: TranscriptionService {
         return FluidAudioModelManager.languageHint(from: selectedLanguage, for: model.name)
     }
 
+    // Unified managers retain their models independently of per-recording resources.
     private func cleanupLoadedManagers() async {
-        _ = try? await TranscriptionDiagnostics.measure("manager-cleanup", logger: logger) {
-            await unifiedAsrManager?.cleanup()
-            await nemotronAsrManager?.cleanup()
-            await asrManager?.cleanup()
-        }
+        await nemotronAsrManager?.cleanup()
+        await asrManager?.cleanup()
 
-        unifiedAsrManager = nil
         nemotronAsrManager = nil
         asrManager = nil
         vadManager = nil
@@ -42,7 +56,6 @@ class FluidAudioTranscriptionService: TranscriptionService {
 
     private func ensureModelsLoaded(for version: AsrModelVersion) async throws {
         if asrManager != nil, activeVersion == version {
-            TranscriptionDiagnostics.recording?.add("manager", "reused")
             return
         }
 
@@ -52,28 +65,9 @@ class FluidAudioTranscriptionService: TranscriptionService {
         let models = try await getOrLoadModels(for: version)
 
         let manager = AsrManager(config: .default)
-        try await TranscriptionDiagnostics.measure("parakeet-manager-load", logger: logger) {
-            try await manager.loadModels(models)
-        }
+        try await manager.loadModels(models)
         self.asrManager = manager
         self.activeVersion = version
-    }
-
-    private func ensureUnifiedModelsLoaded() async throws {
-        if unifiedAsrManager != nil {
-            return
-        }
-
-        await cleanupLoadedManagers()
-
-        let manager = UnifiedAsrManager(encoderPrecision: FluidAudioModelManager.parakeetUnifiedPrecision)
-        try await TranscriptionDiagnostics.measure(
-            "unified-model-load", logger: logger,
-            details: "encoderPrecision=\(FluidAudioModelManager.parakeetUnifiedPrecision) configuration=SDK-default"
-        ) {
-            try await manager.loadModels(from: FluidAudioModelManager.parakeetUnifiedCacheDirectory())
-        }
-        self.unifiedAsrManager = manager
     }
 
     private func ensureNemotronModelsLoaded(named modelName: String) async throws {
@@ -84,11 +78,7 @@ class FluidAudioTranscriptionService: TranscriptionService {
         await cleanupLoadedManagers()
 
         let manager = StreamingNemotronMultilingualAsrManager()
-        try await TranscriptionDiagnostics.measure(
-            "nemotron-model-load", logger: logger, details: "model=\(modelName) configuration=SDK-default"
-        ) {
-            try await manager.loadModels(from: FluidAudioModelManager.nemotronCacheDirectory(for: modelName))
-        }
+        try await manager.loadModels(from: FluidAudioModelManager.nemotronCacheDirectory(for: modelName))
         self.nemotronAsrManager = manager
         self.activeNemotronModelName = modelName
     }
@@ -96,37 +86,27 @@ class FluidAudioTranscriptionService: TranscriptionService {
     // Returns cached models or loads from disk; deduplicates concurrent loads
     func getOrLoadModels(for version: AsrModelVersion) async throws -> AsrModels {
         if let cached = cachedModels, cached.version == version {
-            TranscriptionDiagnostics.recording?.add("models", "reused")
             return cached
         }
 
         // Deduplicate concurrent loads for the same version
         if let (existingVersion, existingTask) = loadingTask, existingVersion == version {
-            TranscriptionDiagnostics.recording?.add("models", "shared-load")
-            return try await TranscriptionDiagnostics.measure("waiting-for-model-load", logger: logger) {
-                try await existingTask.value
-            }
+            return try await existingTask.value
         }
 
-        let logger = self.logger
         let task = Task {
-            try await TranscriptionDiagnostics.measure(
-                "parakeet-model-load", logger: logger,
-                details: "version=\(version) encoderPrecision=int8 computeUnits=cpuAndNeuralEngine preprocessor=cpuOnly"
-            ) {
-                let cacheDirectory = AsrModels.defaultCacheDirectory(for: version)
-                guard AsrModels.modelsExist(at: cacheDirectory, version: version) else {
-                    throw AsrModelsError.loadingFailed(
-                        "Parakeet model files are incomplete. Download the model from AI Models."
-                    )
-                }
-                return try await AsrModels.load(
-                    from: cacheDirectory,
-                    configuration: nil,
-                    version: version,
-                    encoderPrecision: .int8
+            let cacheDirectory = AsrModels.defaultCacheDirectory(for: version)
+            guard AsrModels.modelsExist(at: cacheDirectory, version: version) else {
+                throw AsrModelsError.loadingFailed(
+                    "Parakeet model files are incomplete. Download the model from AI Models."
                 )
             }
+            return try await AsrModels.load(
+                from: cacheDirectory,
+                configuration: nil,
+                version: version,
+                encoderPrecision: .int8
+            )
         }
         loadingTask = (version, task)
 
@@ -154,7 +134,7 @@ class FluidAudioTranscriptionService: TranscriptionService {
         }
 
         if FluidAudioModelManager.isParakeetUnifiedModel(named: model.name) {
-            try await ensureUnifiedModelsLoaded()
+            try await prewarmUnifiedModel(isRealtime: false)
             return
         }
 
@@ -164,41 +144,12 @@ class FluidAudioTranscriptionService: TranscriptionService {
     func transcribe(audioURL: URL, model: any TranscriptionModel, context: TranscriptionRequestContext) async throws
         -> String
     {
-        if TranscriptionDiagnostics.recording != nil {
-            return try await transcribeBatch(audioURL: audioURL, model: model, context: context)
-        }
-        let recording = TranscriptionDiagnostics.Recording()
-        TranscriptionDiagnostics.configuration(model: model, context: context, realtime: false, id: recording.id)
-        return try await TranscriptionDiagnostics.transcribe(audioURL: audioURL, model: model, recording: recording) {
-            try await transcribeBatch(audioURL: audioURL, model: model, context: context)
-        }
-    }
-
-    private func transcribeBatch(audioURL: URL, model: any TranscriptionModel, context: TranscriptionRequestContext)
-        async throws -> String
-    {
-        try await TranscriptionDiagnostics.measure("batch-transcription", logger: logger) {
-            try await transcribeAudio(audioURL: audioURL, model: model, context: context)
-        }
-    }
-
-    private func transcribeAudio(audioURL: URL, model: any TranscriptionModel, context: TranscriptionRequestContext)
-        async throws -> String
-    {
         if FluidAudioModelManager.isParakeetUnifiedModel(named: model.name) {
-            try await ensureUnifiedModelsLoaded()
-            guard let unifiedAsrManager else {
-                throw ASRError.notInitialized
+            return try await unifiedBatchModels.withModel { manager in
+                let samples = try await preparedSpeechAudio(from: audioURL)
+                try Task.checkCancellation()
+                return samples.isEmpty ? "" : try await manager.transcribe(samples)
             }
-
-            let speechAudio = try await preparedSpeechAudio(from: audioURL)
-            guard !speechAudio.isEmpty else { return "" }
-            let text = try await TranscriptionDiagnostics.measure(
-                "unified-prediction", logger: logger, details: "samples=\(speechAudio.count)"
-            ) {
-                try await unifiedAsrManager.transcribe(speechAudio)
-            }
-            return text
         }
 
         if FluidAudioModelManager.isNemotronModel(named: model.name) {
@@ -223,14 +174,8 @@ class FluidAudioTranscriptionService: TranscriptionService {
                 speechAudio += [Float](repeating: 0, count: trailingSilenceSamples)
             }
 
-            _ = try await TranscriptionDiagnostics.measure(
-                "nemotron-prediction", logger: logger, details: "samples=\(speechAudio.count)"
-            ) {
-                try await nemotronAsrManager.process(samples: speechAudio)
-            }
-            let text = try await TranscriptionDiagnostics.measure("nemotron-finish", logger: logger) {
-                try await nemotronAsrManager.finish()
-            }
+            _ = try await nemotronAsrManager.process(samples: speechAudio)
+            let text = try await nemotronAsrManager.finish()
             return text
         }
 
@@ -250,15 +195,17 @@ class FluidAudioTranscriptionService: TranscriptionService {
         if UserDefaults.standard.bool(forKey: "IsVADEnabled") {
             let speechAudio = try await preparedSpeechAudio(from: audioURL)
             guard !speechAudio.isEmpty else { return "" }
-            result = try await TranscriptionDiagnostics.measure(
-                "parakeet-prediction", logger: logger, details: "samples=\(speechAudio.count)"
-            ) {
-                try await asrManager.transcribe(speechAudio, decoderState: &decoderState, language: languageHint)
-            }
+            result = try await asrManager.transcribe(
+                speechAudio,
+                decoderState: &decoderState,
+                language: languageHint
+            )
         } else {
-            result = try await TranscriptionDiagnostics.measure("parakeet-file-prediction", logger: logger) {
-                try await asrManager.transcribe(audioURL, decoderState: &decoderState, language: languageHint)
-            }
+            result = try await asrManager.transcribe(
+                audioURL,
+                decoderState: &decoderState,
+                language: languageHint
+            )
         }
 
         return result.text
@@ -269,10 +216,7 @@ class FluidAudioTranscriptionService: TranscriptionService {
     }
 
     private func preparedSpeechAudio(from audioURL: URL) async throws -> [Float] {
-        let samples = try await TranscriptionDiagnostics.measure("audio-preparation", logger: logger) {
-            try loadAudioSamples(from: audioURL)
-        }
-        TranscriptionDiagnostics.recording?.add("inputSamples16kHz", String(samples.count))
+        let samples = try loadAudioSamples(from: audioURL)
         return try await preparedSpeechAudio(in: samples)
     }
 
@@ -282,9 +226,6 @@ class FluidAudioTranscriptionService: TranscriptionService {
         }
 
         var speechAudio = segments.flatMap { $0 }
-        TranscriptionDiagnostics.recording?.add("vadInputSamples", String(samples.count))
-        TranscriptionDiagnostics.recording?.add("vadSegments", String(segments.count))
-        TranscriptionDiagnostics.recording?.add("vadSpeechSamples", String(speechAudio.count))
         guard !speechAudio.isEmpty else { return [] }
         let minimumSamples = ASRConstants.minimumRequiredSamples(forSampleRate: ASRConstants.sampleRate)
         if speechAudio.count < minimumSamples {
@@ -302,24 +243,20 @@ class FluidAudioTranscriptionService: TranscriptionService {
         do {
             try Task.checkCancellation()
             let manager = try await getOrLoadVadManager()
-            let segments = try await TranscriptionDiagnostics.measure("streaming-vad", logger: logger) {
-                try await manager.segmentSpeech(samples)
-            }
+            let segments = try await manager.segmentSpeech(samples)
             try Task.checkCancellation()
             return segments
         } catch is CancellationError {
             throw CancellationError()
         } catch {
-            logger.notice("VAD failed; using full audio: \(TranscriptionDiagnostics.errorDetails(error, includeUnderlying: false), privacy: .public)")
+            logger.notice("VAD failed; using full audio: \(error, privacy: .public)")
             return nil
         }
     }
 
     private func getOrLoadVadManager() async throws -> VadManager {
         if let vadManager { return vadManager }
-        let manager = try await TranscriptionDiagnostics.measure("vad-model-load", logger: logger) {
-            try await VadManager(config: VadConfig(defaultThreshold: 0.7))
-        }
+        let manager = try await VadManager(config: VadConfig(defaultThreshold: 0.7))
         vadManager = manager
         return manager
     }
@@ -333,15 +270,13 @@ class FluidAudioTranscriptionService: TranscriptionService {
         do {
             try Task.checkCancellation()
             let manager = try await getOrLoadVadManager()
-            let segments = try await TranscriptionDiagnostics.measure("vad-speech-detection", logger: logger) {
-                try await manager.segmentSpeechAudio(samples)
-            }
+            let segments = try await manager.segmentSpeechAudio(samples)
             try Task.checkCancellation()
             return segments
         } catch is CancellationError {
             throw CancellationError()
         } catch {
-            logger.notice("VAD failed; using full audio: \(TranscriptionDiagnostics.errorDetails(error, includeUnderlying: false), privacy: .public)")
+            logger.notice("VAD failed; using full audio: \(error, privacy: .public)")
             return nil
         }
     }
