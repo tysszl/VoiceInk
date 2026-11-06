@@ -38,6 +38,7 @@ Fork edits are marked `// Fork tuning:` or gated by `#if LOCAL_BUILD`. Add no fo
 - `scripts/deploy-local.sh`: Debug build, install to `/Applications`, open
 - `scripts/build-signed.sh`, `scripts/local.env.example`, `scripts/dmg-assets/`: Developer ID-signed, notarized, universal DMG
 - `evals/cleanup-prompt/`, `docs/evals/`: the cleanup prompt eval and its reports
+- `docs/reviews/`: reviews of other dictation apps for ideas worth adopting
 - `.gitignore`: ignores `Fork.local.xcconfig`, `scripts/local.env`, `LOCAL.md`, `__pycache__/`
 
 ## Merging upstream
