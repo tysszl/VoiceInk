@@ -126,8 +126,10 @@ struct NotchRecorderView<S: RecorderStateProvider & ObservableObject>: View {
 
     // MARK: - Animation
 
-    private let expandAnimation = Animation.spring(response: 0.42, dampingFraction: 0.80)
-    private let collapseAnimation = Animation.spring(response: 0.45, dampingFraction: 1.0)
+    // Fork tuning: faster springs (upstream 0.42 / 0.45) and content fade-in delay (upstream 0.09).
+    private let expandAnimation = Animation.spring(response: 0.25, dampingFraction: 0.80)
+    private let collapseAnimation = Animation.spring(response: 0.28, dampingFraction: 1.0)
+    private let contentFadeInDelay = 0.03
 
     private var pillAnimation: Animation {
         displayState == .collapsed ? collapseAnimation : expandAnimation
@@ -188,7 +190,7 @@ struct NotchRecorderView<S: RecorderStateProvider & ObservableObject>: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .opacity(displayState != .collapsed ? 1 : 0)
             .animation(
-                displayState != .collapsed ? expandAnimation.delay(0.09) : collapseAnimation,
+                displayState != .collapsed ? expandAnimation.delay(contentFadeInDelay) : collapseAnimation,
                 value: displayState
             )
 
@@ -205,7 +207,7 @@ struct NotchRecorderView<S: RecorderStateProvider & ObservableObject>: View {
             .frame(maxWidth: .infinity, alignment: .trailing)
             .opacity(displayState != .collapsed ? 1 : 0)
             .animation(
-                displayState != .collapsed ? expandAnimation.delay(0.09) : collapseAnimation,
+                displayState != .collapsed ? expandAnimation.delay(contentFadeInDelay) : collapseAnimation,
                 value: displayState
             )
         }
