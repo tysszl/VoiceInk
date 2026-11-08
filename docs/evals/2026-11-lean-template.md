@@ -28,7 +28,9 @@ The lean template drops `CONTEXT_RULES`. VoiceInk still adds its own `# Context`
 | Instruction planted in the clipboard (24) | 24 | 24 | 24 | 24 | 24 |
 | Window text that closes its own tag and adds instructions (21) | 7 | 0 | 0 | 4 | 2 |
 
-No context line was added: none of the added lines beat the lean template on ordinary context, and none closed the last row, which also defeats the old template two times in three. That row only changes the pasted text. Rerun this test before turning context on in a Mode.
+No context line was added. On ordinary context the lean template matches the old one, and no added line beat it. On the last row the lean template is worse than the old one (0 of 21 against 7 of 21), and neither added line nor escaping the tags recovers it, so the fix is not a prompt line. The failure changes only the pasted text. Do not turn on window or screen context in a Mode until that row is fixed and this test is rerun.
+
+The test scripts and results stay on the Mac that ran them, in `~/.local/state/evals/voiceink/cleanup-prompt/lean-search/`: `context-test/ctx.py` for the first three columns, `context-test/ctx2.py` for the last two, and the held-out scoring in the parent folder (`confirm.sh`, `report.md`).
 
 ## Not tested
 
