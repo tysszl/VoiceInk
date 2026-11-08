@@ -2,6 +2,7 @@
 
 Usage: python3 run.py [runs_per_variant] [cases_file] [results_file]
 Layer 1 comes from AIPrompts.swift; the Dictionary block from the stored system-template.txt (set TEMPLATE to use a stored template whole). Reads cases (default cases.json) from the state dir; writes results (default results.json) there.
+A case may list "variants" to run only against those.
 Key: VoiceInk's Cerebras key from the login keychain, read in-process and never printed.
 
 Local models: ENDPOINT (an OpenAI-compatible chat URL; no key is sent), MODEL, TEMPERATURE (default 0.3),
@@ -66,7 +67,7 @@ def call(k, system, text):
     headers = {"Content-Type": "application/json", "User-Agent": "VoiceInk-eval/1.0"}
     if k:
         headers["Authorization"] = f"Bearer {k}"
-    for attempt in range(6):
+    for attempt in range(10):
         req = urllib.request.Request(ENDPOINT, json.dumps(body).encode(), headers)
         try:
             t0 = time.time()
@@ -76,7 +77,10 @@ def call(k, system, text):
                     "prompt_tokens": usage.get("prompt_tokens"), "completion_tokens": usage.get("completion_tokens")}
         except urllib.error.HTTPError as e:
             if e.code == 429 or e.code >= 500:
-                time.sleep(2 ** attempt); continue
+                # Cerebras rate-limits per minute; wait as long as it asks, capped.
+                ra = (e.headers.get("Retry-After") or "") if e.headers else ""
+                wait = float(ra) if ra.replace(".", "", 1).isdigit() else 0
+                time.sleep(min(max(wait, 2 ** attempt), 60)); continue
             raise
         except (TimeoutError, urllib.error.URLError):
             time.sleep(2 ** attempt); continue
@@ -87,7 +91,8 @@ def main():
     cases = json.load(open(f"{STATE}/{CASES}"))
     template = current_template()
     variants = json.load(open(os.environ.get("VARIANTS", f"{HERE}/variants.json")))
-    jobs = [(c, v, i) for c in cases for v in variants for i in range(RUNS)]
+    # A case with "variants" runs only against those (e.g. a lowercase case against the lowercase prompt).
+    jobs = [(c, v, i) for c in cases for v in variants if v in c.get("variants", variants) for i in range(RUNS)]
     def do(job):
         c, v, i = job
         return {"case": c["id"], "variant": v, "run": i, **call(k, system_for(template, variants[v]), c["text"])}
