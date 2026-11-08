@@ -8,8 +8,10 @@ Key: VoiceInk's Cerebras key from the login keychain, read in-process and never 
 Local models: ENDPOINT (an OpenAI-compatible chat URL; no key is sent), MODEL, TEMPERATURE (default 0.3),
 LAYOUT=bare (the transcript as the whole user turn, as VoiceInk Refine sends it) or tagged (default, <TRANSCRIPT>),
 WORKERS (default 4; use 1 to time a local model), EXTRA (JSON merged into the request body).
+Spend cap: REQUEST_CAP (max HTTP requests, retries included) counted in REQUEST_COUNT_FILE, shared across runs.
+A 402 (billing) or reaching the cap stops the whole run before any further request.
 """
-import json, os, re, subprocess, sys, time, urllib.request
+import fcntl, json, os, re, subprocess, sys, threading, time, urllib.request
 from concurrent.futures import ThreadPoolExecutor
 
 STATE = os.path.expanduser("~/.local/state/evals/voiceink/cleanup-prompt")
@@ -57,6 +59,24 @@ def system_for(template, body):
     assert n == 1
     return out
 
+STOP = threading.Event()
+CAP = int(os.environ["REQUEST_CAP"]) if os.environ.get("REQUEST_CAP") else None
+COUNT_FILE = os.environ.get("REQUEST_COUNT_FILE")
+assert CAP is None or COUNT_FILE, "REQUEST_CAP needs REQUEST_COUNT_FILE"
+
+def spend():
+    """Count one request against the cap; refuse once it is reached or the run was stopped."""
+    if STOP.is_set():
+        raise RuntimeError("run stopped")
+    if CAP is None:
+        return
+    with open(COUNT_FILE, "a+") as f:
+        fcntl.flock(f, fcntl.LOCK_EX)
+        f.seek(0); n = int(f.read().strip() or 0)
+        if n >= CAP:
+            STOP.set(); raise RuntimeError(f"request cap {CAP} reached")
+        f.seek(0); f.truncate(); f.write(str(n + 1))
+
 def call(k, system, text):
     user = text if BARE else f"\n<TRANSCRIPT>\n{text}\n</TRANSCRIPT>"
     body = {"model": MODEL, "temperature": TEMPERATURE,
@@ -68,6 +88,7 @@ def call(k, system, text):
     if k:
         headers["Authorization"] = f"Bearer {k}"
     for attempt in range(10):
+        spend()
         req = urllib.request.Request(ENDPOINT, json.dumps(body).encode(), headers)
         try:
             t0 = time.time()
@@ -76,6 +97,8 @@ def call(k, system, text):
             return {"output": r["choices"][0]["message"]["content"], "seconds": round(time.time() - t0, 2),
                     "prompt_tokens": usage.get("prompt_tokens"), "completion_tokens": usage.get("completion_tokens")}
         except urllib.error.HTTPError as e:
+            if e.code == 402:
+                STOP.set(); raise RuntimeError("402 payment required: stopping")
             if e.code == 429 or e.code >= 500:
                 # Cerebras rate-limits per minute; wait as long as it asks, capped.
                 ra = (e.headers.get("Retry-After") or "") if e.headers else ""
