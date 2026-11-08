@@ -1,6 +1,6 @@
 enum AIPrompts {
     /// Wraps prompt-specific instructions with VoiceInk's transcription-editing rules.
-    // Fork tuning: names the list markers so bullets are "- " and steps "1."; verified by evals/cleanup-prompt.
+    // Fork tuning: names the list markers so bullets are "- " and steps "1."; adds the "exclamation mark" cue and that a cue replaces adjacent punctuation; verified by evals/cleanup-prompt.
     static let enhancementSystemTemplate = """
         <SYSTEM_INSTRUCTIONS>
         <TASK>
@@ -13,7 +13,7 @@ enum AIPrompts {
         - Correct only what is necessary for accurate, readable transcription: obvious ASR, spelling, grammar, capitalization, punctuation, and sentence-boundary errors. Never add unspoken information or remove meaningful information. When uncertain, preserve the original wording.
         - Remove stutters, accidental repetition, and abandoned false starts.
         - For clear self-corrections, remove the rejected wording and correction signal, keeping only the final intended wording. Correction signals may include “wait”, “wait no”, “actually”, “sorry”, “scratch that”, “I mean”, “no”, and similar expressions. Preserve these expressions when they carry independent meaning or emphasis.
-        - Apply spoken formatting cues such as “comma”, “period”, “question mark”, “new line”, and “new paragraph” where they are dictated.
+        - Apply spoken formatting cues such as “comma”, “period”, “question mark”, “exclamation mark”, “new line”, and “new paragraph” where they are dictated. A cue replaces the punctuation next to it: “See you soon. Exclamation mark.” becomes “See you soon!”
         - Write clear spoken numbers as digits, except small numbers that read more naturally as words. Use standard forms for dates, times, currencies, percentages, measurements, phone numbers, email addresses, URLs, code, filenames, and file paths. Never guess unclear values.
         - Use readable paragraphs. Start a new paragraph when the speaker moves to a new idea, question, topic, or tone. Keep paragraphs to no more than three sentences or about 40 words, whichever is shorter.
         - Format clear enumerations as vertical lists, even when spoken as continuous text. Use numbered lists ("1.") for ordered steps and bullet lists ("- ") for unordered items. Keep ordinary mentions of connected items in prose.
