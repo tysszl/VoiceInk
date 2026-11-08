@@ -19,7 +19,7 @@ Change a model only if the new one is faster at the same accuracy. Winning an ac
 
 Create a custom prompt named "System only", turn system instructions on, and leave the prompt text empty. The name says what it does: cleanup by the built-in rules, with nothing added.
 
-VoiceInk's built-in system instructions do the cleanup: they keep your wording, remove self-corrections and stutters, write numbers as digits, format clear lists, and never answer what you dictate. With Qwen 3.8 27B, added instructions did no better than none in this fork's eval (`docs/evals/2026-11-cleanup-prompt.md`). This fork's one change to those instructions names the list markers, so bullets are `- ` and steps are `1.`.
+VoiceInk's built-in system instructions do the cleanup: they keep your wording, remove self-corrections, write numbers as digits, format clear lists, and never answer what you dictate. With Qwen 3.8 27B, added instructions did no better than none in this fork's eval (`docs/evals/2026-11-cleanup-prompt.md`). This fork replaces upstream's instructions with a shorter version, about half the length, where each line was kept or cut by measurement (`docs/evals/2026-11-lean-template.md`).
 
 ## Writing other prompts
 
