@@ -38,10 +38,21 @@ class FluidAudioModelManager: ObservableObject {
         fluidSpeechMiniModelName: .redux,
     ]
 
-    // Fork tuning: Fluid Speech Mini (FluidVoice Labs) is a Parakeet V3 drop-in that FluidAudio has no Repo for.
+    // Fork tuning: FluidVoice Labs' models are Parakeet V3 drop-ins that FluidAudio has no Repo for.
     nonisolated static let fluidSpeechMiniModelName = "fluid-speech-mini"
-    nonisolated private static let fluidSpeechMiniRepository = "FluidVoice-Labs/fluid-speech-mini-coreml"
-    nonisolated private static let fluidSpeechMiniRevision = "d81c3160dfe5a5e1f8f7267164a07d30617a3a1a"
+
+    private struct FluidVoiceSource {
+        let displayName: String
+        let repository: String
+        let revision: String
+    }
+
+    nonisolated private static let fluidVoiceSources: [String: FluidVoiceSource] = [
+        fluidSpeechMiniModelName: FluidVoiceSource(
+            displayName: "Fluid Speech Mini",
+            repository: "FluidVoice-Labs/fluid-speech-mini-coreml",
+            revision: "d81c3160dfe5a5e1f8f7267164a07d30617a3a1a"),
+    ]
 
     private enum FluidAudioModelKind {
         case parakeet(AsrModelVersion)
@@ -167,7 +178,7 @@ class FluidAudioModelManager: ObservableObject {
         case .parakeetUnified:
             let directory = cacheDirectory(for: modelName)
             return Self.parakeetUnifiedRequiredFiles.allSatisfy {
-                FileManager.default.fileExists(atPath: directory.appendingPathComponent($0).path)
+                Self.modelFileIsReady(at: directory.appendingPathComponent($0))
             }
         case .parakeet(let version):
             return AsrModels.modelsExist(at: cacheDirectory(for: version), version: version)
@@ -238,8 +249,6 @@ class FluidAudioModelManager: ObservableObject {
         let progressHandler: ProgressHandler = { progress in
             progressContinuation.yield(progress)
         }
-        var preserveModelFiles = false
-
         do {
             switch Self.modelKind(for: modelName) {
             case .parakeetUnified:
@@ -251,7 +260,6 @@ class FluidAudioModelManager: ObservableObject {
                     progressHandler: Self.downloadOnlyProgressHandler(forwarding: progressHandler)
                 )
                 try Task.checkCancellation()
-                preserveModelFiles = true
                 beginModelPreparation(for: modelName, downloadID: downloadID)
                 try await Self.optimizeParakeetUnifiedRealtimeModel()
                 try Task.checkCancellation()
@@ -264,7 +272,6 @@ class FluidAudioModelManager: ObservableObject {
                     progressHandler: progressHandler
                 )
                 try Task.checkCancellation()
-                preserveModelFiles = true
                 beginModelPreparation(for: modelName, downloadID: downloadID)
                 let manager = StreamingNemotronMultilingualAsrManager()
                 do {
@@ -277,10 +284,9 @@ class FluidAudioModelManager: ObservableObject {
                 try Task.checkCancellation()
             case .parakeet(let version):
                 let cacheDirectory = AsrModels.defaultCacheDirectory(for: version)
-                preserveModelFiles = AsrModels.modelsExist(at: cacheDirectory, version: version)
-                // Fork tuning: Fluid Speech Mini downloads from its own repository.
-                if modelName == Self.fluidSpeechMiniModelName {
-                    try await Self.downloadFluidSpeechMini(to: cacheDirectory, progressHandler: progressHandler)
+                // Fork tuning: FluidVoice's models download from their own repositories.
+                if let source = Self.fluidVoiceSources[modelName] {
+                    try await Self.downloadFluidVoiceModel(source, to: cacheDirectory, progressHandler: progressHandler)
                 } else {
                     guard let repo = Self.parakeetRepo(for: version) else {
                         throw AsrModelsError.loadingFailed("Unsupported Parakeet model version.")
@@ -293,7 +299,6 @@ class FluidAudioModelManager: ObservableObject {
                         progressHandler: Self.downloadOnlyProgressHandler(forwarding: progressHandler)
                     )
                 }
-                preserveModelFiles = true
                 try Task.checkCancellation()
                 try await ModelHub.download(
                     .vad,
@@ -314,9 +319,7 @@ class FluidAudioModelManager: ObservableObject {
             modelStateRevision += 1
         } catch {
             if error is CancellationError || Task.isCancelled {
-                if !preserveModelFiles {
-                    try? FileManager.default.removeItem(at: cacheDirectory(for: model))
-                }
+                // FluidAudio validates and resumes partial downloads on the next attempt.
                 modelStateRevision += 1
             } else {
                 logger.error("❌ FluidAudio download failed for \(modelName, privacy: .public): \(error, privacy: .public)")
@@ -362,9 +365,10 @@ class FluidAudioModelManager: ObservableObject {
         }
     }
 
-    // Fork tuning: fetches Fluid Speech Mini's files and saves its joint under the name
+    // Fork tuning: fetches a FluidVoice model's files and saves its joint under the name
     // FluidAudio's V3-family loader expects. Each file is moved into place only when complete.
-    nonisolated private static func downloadFluidSpeechMini(
+    nonisolated private static func downloadFluidVoiceModel(
+        _ source: FluidVoiceSource,
         to directory: URL,
         progressHandler: ProgressHandler?
     ) async throws {
@@ -384,10 +388,10 @@ class FluidAudioModelManager: ObservableObject {
             let destination = directory.appendingPathComponent(localPath)
             guard !FileManager.default.fileExists(atPath: destination.path) else { continue }
 
-            let url = URL(string: "https://huggingface.co/\(fluidSpeechMiniRepository)/resolve/\(fluidSpeechMiniRevision)/\(file)")!
+            let url = URL(string: "https://huggingface.co/\(source.repository)/resolve/\(source.revision)/\(file)")!
             let (temporaryURL, response) = try await URLSession.shared.download(from: url)
             guard (response as? HTTPURLResponse)?.statusCode == 200 else {
-                throw AsrModelsError.downloadFailed("Could not download \(file) for Fluid Speech Mini.")
+                throw AsrModelsError.downloadFailed("Could not download \(file) for \(source.displayName).")
             }
             try FileManager.default.createDirectory(
                 at: destination.deletingLastPathComponent(), withIntermediateDirectories: true)
@@ -459,11 +463,25 @@ class FluidAudioModelManager: ObservableObject {
         let directory = fluidAudioModelsRootDirectory()
             .appendingPathComponent(Repo.vad.folderName, isDirectory: true)
         return ModelNames.VAD.requiredModels.allSatisfy {
-            FileManager.default.fileExists(
-                atPath: directory.appendingPathComponent($0)
-                    .appendingPathComponent("coremldata.bin").path
-            )
+            modelFileIsReady(at: directory.appendingPathComponent($0))
         }
+    }
+
+    // Match FluidAudio's load-ready check so preserved partial downloads stay retryable.
+    nonisolated private static func modelFileIsReady(at url: URL) -> Bool {
+        let fileManager = FileManager.default
+        var isDirectory: ObjCBool = false
+        guard fileManager.fileExists(atPath: url.path, isDirectory: &isDirectory) else { return false }
+        guard url.pathExtension == "mlmodelc" else { return true }
+        guard isDirectory.boolValue,
+            fileManager.fileExists(atPath: url.appendingPathComponent("coremldata.bin").path),
+            let enumerator = fileManager.enumerator(at: url, includingPropertiesForKeys: nil)
+        else { return false }
+
+        for case let file as URL in enumerator where file.pathExtension == "partial" {
+            return false
+        }
+        return true
     }
 
     nonisolated private static func nemotronRequiredFilesExist(in directory: URL) -> Bool {
@@ -474,7 +492,7 @@ class FluidAudioModelManager: ObservableObject {
         ]
 
         let requiredFilesExist = requiredFiles.allSatisfy {
-            FileManager.default.fileExists(atPath: directory.appendingPathComponent($0).path)
+            modelFileIsReady(at: directory.appendingPathComponent($0))
         }
         guard requiredFilesExist else { return false }
 
@@ -482,13 +500,13 @@ class FluidAudioModelManager: ObservableObject {
             "decoder_joint_argmax.mlmodelc",
             "decoder_joint_noencproj.mlmodelc",
             "decoder_joint.mlmodelc",
-        ].contains { FileManager.default.fileExists(atPath: directory.appendingPathComponent($0).path) }
+        ].contains { modelFileIsReady(at: directory.appendingPathComponent($0)) }
         let hasBareDecoderAndJoint =
-            FileManager.default.fileExists(
-                atPath: directory.appendingPathComponent(ModelNames.NemotronMultilingualStreaming.decoderFile).path
+            modelFileIsReady(
+                at: directory.appendingPathComponent(ModelNames.NemotronMultilingualStreaming.decoderFile)
             )
-            && FileManager.default.fileExists(
-                atPath: directory.appendingPathComponent(ModelNames.NemotronMultilingualStreaming.jointFile).path
+            && modelFileIsReady(
+                at: directory.appendingPathComponent(ModelNames.NemotronMultilingualStreaming.jointFile)
             )
 
         return hasFusedDecoder || hasBareDecoderAndJoint

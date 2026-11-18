@@ -2,7 +2,7 @@
 
 This fork tracks [Beingpax/VoiceInk](https://github.com/Beingpax/VoiceInk) and keeps a small diff. This file lists every intentional change and how to carry it through an upstream merge. `git diff <last merged upstream ref> main` must agree with it; update it in the same commit as any fork change.
 
-Last synced: upstream v2.25 (`228f4217`, "Release version 2.25").
+Last synced: upstream v2.27 (`b5d1be9a`, "Release version 2.27").
 
 ## Build settings
 
