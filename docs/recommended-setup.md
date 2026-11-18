@@ -9,6 +9,7 @@ The setup I use every day. Set it up in the app's Modes; each Mode has its own t
 
 - Use Fluid Speech Mini alone for anything that doesn't need custom terms or perfect formatting. It runs on-device and is the fastest path.
 - Fluid Speech Mini matches Parakeet Ultra's accuracy, handles other voices in the room better, and uses less than half the memory while dictating (about 260 MB against 610 MB), so it suits Macs with less memory. It is English only; for other languages, use Parakeet Ultra. Upstream VoiceInk does not offer it yet; this fork adds it.
+- This fork also offers Fluid Speech Pro, FluidVoice's 25-language model built for noisy rooms. FluidVoice's numbers show it improving more on Parakeet V3 than Mini does in general (17% fewer errors against 7%) and in general noise; Mini's card shows it nearly halves errors when someone else is talking nearby, which Pro's card does not test. It runs as fast as Mini but downloads 630 MB and holds about 350 MB more memory. I'm trying it before switching.
 - Add Qwen 3.8 27B through Cerebras when you need custom terms and clean formatting. Cerebras serves it fast enough that cleanup adds little delay. It needs a Cerebras API key, added in the AI Models section.
 - Keep the enhancement timeout short (3 seconds) so a slow response falls back to the raw transcript.
 - Add your names and jargon to the Dictionary; the cleanup model uses them.
