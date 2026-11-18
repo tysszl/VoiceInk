@@ -33,13 +33,15 @@ class FluidAudioModelManager: ObservableObject {
         "parakeet-tdt-0.6b-v2": .v2,
         "parakeet-tdt-0.6b-v3": .v3,
         "parakeet-ultra": .ultra,
-        // Fork tuning: Fluid Speech Mini has Redux's file layout, and VoiceInk does not offer Redux,
-        // so Mini takes the .redux slot to get its own model folder and loaded-model cache.
+        // Fork tuning: FluidVoice's models have Redux's file layout. VoiceInk offers neither Redux nor
+        // Phonon-2, so Mini and Pro take those slots to get their own model folders and loaded-model caches.
         fluidSpeechMiniModelName: .redux,
+        fluidSpeechProModelName: .phonon2,
     ]
 
     // Fork tuning: FluidVoice Labs' models are Parakeet V3 drop-ins that FluidAudio has no Repo for.
     nonisolated static let fluidSpeechMiniModelName = "fluid-speech-mini"
+    nonisolated static let fluidSpeechProModelName = "fluid-speech-pro"
 
     private struct FluidVoiceSource {
         let displayName: String
@@ -52,6 +54,10 @@ class FluidAudioModelManager: ObservableObject {
             displayName: "Fluid Speech Mini",
             repository: "FluidVoice-Labs/fluid-speech-mini-coreml",
             revision: "d81c3160dfe5a5e1f8f7267164a07d30617a3a1a"),
+        fluidSpeechProModelName: FluidVoiceSource(
+            displayName: "Fluid Speech Pro",
+            repository: "FluidVoice-Labs/fluid-speech-pro-coreml",
+            revision: "3b9d38a93d606f84011e5a0a669b7ea146375a22"),
     ]
 
     private enum FluidAudioModelKind {
