@@ -9,6 +9,7 @@ If `LOCAL.md` exists, read it: it holds this machine's dictation setup, signing 
 - Keep the diff from upstream small. Every intentional change is listed in `docs/fork-changes.md`; update it in the same commit as any fork change.
 - Prefer settings and docs over fork-only Swift. Edit upstream Swift only for a concrete, verified win, mark the edit `// Fork tuning:` or gate it with `#if LOCAL_BUILD`, and add no fork-only Swift files.
 - Do not delete unused upstream code (providers, licensing, Sparkle, announcements): it is harmless or disabled by `LOCAL_BUILD`, and every deletion conflicts when upstream touches the file.
+- This fork is public on GitHub: personal prompts, dictations, Dictionary words and names stay in `LOCAL.md` or `~/.local/state/`, never in tracked files (2026-11-02).
 - Keep machine-specific values out of tracked files. The bundle ID and team go in `Fork.local.xcconfig`; Apple ID, Developer ID identity, and notary profile go in `scripts/local.env`. Both are gitignored; copy the `.example` files to create them.
 
 ## Build and deploy
@@ -28,7 +29,7 @@ For a build to install on another Mac (Developer ID-signed, notarized, universal
 
 ## Upstream merges
 
-Follow "Merging upstream" in `docs/fork-changes.md`. After the build runs and the app opens, update the "Based on upstream" line above and "Last synced" in `docs/fork-changes.md`, then commit.
+Follow "Merging upstream" in `docs/fork-changes.md`. After the build runs and the app opens, update the "Based on upstream" line above and "Last synced" in `docs/fork-changes.md`, then commit. Then tell Tyler what changes while he dictates and what to try once: each Mode, a fast stop and restart, dictating into Screen Sharing, and no new Accessibility or Keychain prompt (2026-11-03).
 
 ## Shipping
 
