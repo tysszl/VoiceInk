@@ -36,6 +36,7 @@ Fork edits are marked `// Fork tuning:` or gated by `#if LOCAL_BUILD`. Add no fo
 ## Fork-only files
 
 - `AGENTS.md`, `docs/fork-changes.md`; `README.md` adds a personal-fork note
+- `docs/recommended-setup.md`: the models, providers and cleanup prompt the fork recommends, linked from the README note
 - `Fork.xcconfig`, `Fork.local.xcconfig.example`
 - `scripts/deploy-local.sh`: Debug build, install to `/Applications`, open
 - `scripts/build-signed.sh`, `scripts/local.env.example`, `scripts/dmg-assets/`: Developer ID-signed, notarized, universal DMG
